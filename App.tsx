@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from './lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import { Session } from '@supabase/supabase-js';
 
 import { Hero } from './components/Hero';
@@ -28,6 +28,32 @@ const DEFAULT_SETTINGS: UserSettings = {
 };
 
 const App: React.FC = () => {
+  // --- CONFIGURATION GUARD ---
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="bg-slate-900 border border-slate-700 p-8 rounded-2xl max-w-lg text-center shadow-2xl">
+          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-50 mb-3">Setup Required</h1>
+          <p className="text-gray-400 mb-8">
+            The application cannot connect to the database. If you are on Netlify, please check your Environment Variables.
+          </p>
+          <div className="bg-slate-950 border border-slate-800 p-4 rounded-lg text-left text-sm font-mono text-gray-400 mb-6 overflow-x-auto">
+             <div className="mb-2 text-gray-500 uppercase text-xs font-bold">Required Netlify Variables:</div>
+             <div className="text-mint-400">VITE_SUPABASE_URL</div>
+             <div className="text-mint-400">VITE_SUPABASE_ANON_KEY</div>
+             <div className="text-mint-400">VITE_API_KEY</div>
+          </div>
+          <p className="text-sm text-gray-500">
+            Note: Variables must start with <code className="text-cyan-500">VITE_</code> to be visible to the app.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   

@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { ListingResult, SearchSource, UserSettings } from "../types";
 
@@ -126,9 +125,22 @@ export const analyzeItemForListing = async (
   settings?: UserSettings
 ): Promise<ListingResult> => {
   try {
-    const apiKey = process.env.API_KEY;
+    // Helper to safely get environment variables in Vite/Netlify
+    const getEnvVar = (key: string) => {
+        if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[key]) {
+            return (import.meta as any).env[key];
+        }
+        if (typeof process !== 'undefined' && process.env && process.env[key]) {
+            return process.env[key];
+        }
+        return '';
+    };
+
+    // Try VITE_API_KEY first (Netlify exposed), then API_KEY (Fallback)
+    const apiKey = getEnvVar('VITE_API_KEY') || getEnvVar('API_KEY') || getEnvVar('VITE_GOOGLE_API_KEY');
+
     if (!apiKey) {
-      throw new Error("API Key is missing. Please ensure your environment is configured correctly.");
+      throw new Error("API Key is missing. Please check your Netlify Environment Variables. Ensure it is named 'VITE_API_KEY'.");
     }
 
     const ai = new GoogleGenAI({ apiKey });
