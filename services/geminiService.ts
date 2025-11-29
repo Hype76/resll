@@ -125,19 +125,8 @@ export const analyzeItemForListing = async (
   settings?: UserSettings
 ): Promise<ListingResult> => {
   try {
-    // Helper to safely get environment variables in Vite/Netlify
-    const getEnvVar = (key: string) => {
-        if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[key]) {
-            return (import.meta as any).env[key];
-        }
-        if (typeof process !== 'undefined' && process.env && process.env[key]) {
-            return process.env[key];
-        }
-        return '';
-    };
-
-    // Try VITE_API_KEY first (Netlify exposed), then API_KEY (Fallback)
-    const apiKey = getEnvVar('VITE_API_KEY') || getEnvVar('API_KEY') || getEnvVar('VITE_GOOGLE_API_KEY');
+    // DIRECT ACCESS: Required for Netlify/Vite build string replacement
+    const apiKey = (import.meta as any).env.VITE_API_KEY;
 
     if (!apiKey) {
       throw new Error("API Key is missing. Please check your Netlify Environment Variables. Ensure it is named 'VITE_API_KEY'.");
@@ -176,7 +165,7 @@ export const analyzeItemForListing = async (
       - Search for 'sold' listings on eBay.co.uk to find the TRUE market value in GBP (£).
       
       STEP 3: PLATFORM SUITABILITY (CRITICAL)
-      - JUDGE STRICTLY: Is this item allowed on Vinted? (YES: Clothes, Shoes, Accessories, Beauty, Small Homeware. NO: Power Tools, Kitchen Appliances, Large Tech).
+      - JUDGE STRICTLY: Is this item allowed on Vinted? (YES: Clothes, Shoes, Accessories, Beauty, Kids toys, Small Homeware. NO: Power Tools, Kitchen Appliances, Large Tech).
       - JUDGE STRICTLY: Is this item allowed on Etsy? (YES: Vintage 20+ years, Handmade. NO: Modern mass-produced electronics/tools).
       
       STEP 4: ARBITRAGE CALCULATION

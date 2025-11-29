@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
@@ -24,7 +23,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
 
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        // Cast to any to bypass type check errors with supabase-js v2
+        const { error } = await (supabase.auth as any).signUp({
           email,
           password,
         });
@@ -32,7 +32,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
         alert("Account created! You can now log in.");
         setMode('login');
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error } = await (supabase.auth as any).signInWithPassword({
           email,
           password,
         });

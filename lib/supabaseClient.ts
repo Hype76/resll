@@ -1,27 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Helper to safely get environment variables in Vite/Netlify
-const getEnvVar = (key: string) => {
-  // Try Vite standard (import.meta.env)
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[key]) {
-    return (import.meta as any).env[key];
+// DIRECT ACCESS: This is required for Netlify/Vite to perform string replacement during build.
+// We cast to 'any' to avoid TypeScript complaining about import.meta.env if types aren't set up.
+const getEnv = (key: string) => {
+  try {
+    return (import.meta as any).env[key] || '';
+  } catch (e) {
+    return '';
   }
-  // Try Legacy/Process (if polyfilled)
-  if (typeof process !== 'undefined' && process.env && process.env[key]) {
-    return process.env[key];
-  }
-  return '';
 };
 
-const envUrl = getEnvVar('VITE_SUPABASE_URL');
-const envKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+// Access variables directly so the bundler sees them
+const envUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+const envKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
-// We use a fallback URL that is syntactically valid to prevent the createClient function
-// from throwing an error during the initial render phase if env vars are missing.
+// Fallback logic
 const fallbackUrl = 'https://placeholder.supabase.co';
 const fallbackKey = 'placeholder';
 
-// Check if we have real values or if they are still the default placeholders
+// Check if configured (preventing the "YOUR_SUPABASE_URL" placeholder)
 export const isSupabaseConfigured = 
   !!envUrl && 
   !!envKey && 
