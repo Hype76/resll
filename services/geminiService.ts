@@ -126,7 +126,10 @@ export const analyzeItemForListing = async (
 ): Promise<ListingResult> => {
   try {
     // DIRECT ACCESS: Required for Netlify/Vite build string replacement
-    const apiKey = (import.meta as any).env.VITE_API_KEY;
+    // @ts-ignore
+    const env = import.meta.env || {};
+    // @ts-ignore
+    const apiKey = env.VITE_API_KEY;
 
     if (!apiKey) {
       throw new Error("API Key is missing. Please check your Netlify Environment Variables. Ensure it is named 'VITE_API_KEY'.");
