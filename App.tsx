@@ -14,7 +14,6 @@ import { AuthModal } from './components/AuthModal';
 import { AppState, ListingResult, MediaAsset, UserSettings, ViewState, UserProfile } from './types';
 import { analyzeItemForListing } from './services/geminiService';
 
-// Local alias for Supabase session
 type Session = any;
 
 interface HistoryItem {
@@ -29,24 +28,14 @@ const DEFAULT_SETTINGS: UserSettings = {
 };
 
 const App: React.FC = () => {
-  // Remove the unused “setFatalError”
   const [fatalError] = useState<string | null>(null);
 
   if (!isSupabaseConfigured) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="bg-slate-900 border border-slate-700 p-8 rounded-2xl max-w-lg text-center shadow-2xl">
-          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-          </div>
           <h1 className="text-2xl font-bold text-gray-50 mb-3">Setup Required</h1>
-          <p className="text-gray-400 mb-8">The application cannot connect to the database.</p>
-          <div className="bg-slate-950 border border-slate-800 p-4 rounded-lg text-left text-sm font-mono text-gray-400 mb-6 overflow-x-auto">
-             <div className="mb-2 text-gray-500 uppercase text-xs font-bold">Required Netlify Variables:</div>
-             <div className="text-mint-400">VITE_SUPABASE_URL</div>
-             <div className="text-mint-400">VITE_SUPABASE_ANON_KEY</div>
-             <div className="text-mint-400">VITE_API_KEY</div>
-          </div>
+          <p className="text-gray-400 mb-8">Missing Netlify env vars.</p>
         </div>
       </div>
     );
@@ -56,11 +45,9 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="bg-slate-900 border border-red-900/50 p-8 rounded-2xl max-w-lg text-center shadow-2xl">
-           <h1 className="text-2xl font-bold text-red-500 mb-4">Application Error</h1>
-           <p className="text-gray-400 mb-6">{fatalError}</p>
-           <button onClick={() => window.location.reload()} className="px-6 py-2 bg-slate-800 hover:bg-slate-700 rounded text-gray-50">
-             Reload
-           </button>
+          <h1 className="text-2xl font-bold text-red-500 mb-4">Application Error</h1>
+          <p className="text-gray-400 mb-6">{fatalError}</p>
+          <button onClick={() => window.location.reload()} className="px-6 py-2 bg-slate-800 rounded text-gray-50">Reload</button>
         </div>
       </div>
     );
@@ -82,12 +69,11 @@ const App: React.FC = () => {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'login'|'signup'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
   const [manualProduct, setManualProduct] = useState('');
   const [manualCondition, setManualCondition] = useState('Good');
 
-  // INITIALIZE AUTH
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -122,20 +108,10 @@ const App: React.FC = () => {
 
   const fetchUserData = async (userId: string) => {
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (profile) setUserProfile(profile);
 
-      const { data: settings } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
+      const { data: settings } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
       if (settings) {
         setUserSettings({
           defaultCondition: settings.default_condition,
@@ -160,10 +136,7 @@ const App: React.FC = () => {
 
     if (scans) {
       const items = scans.map((scan: any) => ({
-        result: {
-          ...scan.full_result,
-          thumbnail: scan.thumbnail_url
-        }
+        result: { ...scan.full_result, thumbnail: scan.thumbnail_url }
       }));
       setHistory(items);
     }
@@ -177,17 +150,12 @@ const App: React.FC = () => {
     try {
       if (imageFile) {
         const fileName = `${session.user.id}/${Date.now()}.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from('scan_images')
-          .upload(fileName, imageFile);
-
-        if (!uploadError) {
-          const { data } = supabase.storage.from('scan_images').getPublicUrl(fileName);
-          publicUrl = data.publicUrl;
-        }
+        await supabase.storage.from('scan_images').upload(fileName, imageFile);
+        const { data } = supabase.storage.from('scan_images').getPublicUrl(fileName);
+        publicUrl = data.publicUrl;
       }
 
-      const { error } = await supabase.from('scans').insert({
+      await supabase.from('scans').insert({
         user_id: session.user.id,
         title: result.title,
         brand: result.brand,
@@ -197,21 +165,15 @@ const App: React.FC = () => {
         full_result: result
       });
 
-      if (!error) {
-        const newItem = { result: { ...result, thumbnail: publicUrl } };
-        setHistory([newItem, ...history]);
+      const newItem = { result: { ...result, thumbnail: publicUrl } };
+      setHistory([newItem, ...history]);
 
-        if (userProfile) {
-          const newCount = userProfile.scans_used + 1;
-          await supabase
-            .from('profiles')
-            .update({ scans_used: newCount })
-            .eq('id', session.user.id);
-
-          setUserProfile({ ...userProfile, scans_used: newCount });
-        }
+      if (userProfile) {
+        const newCount = userProfile.scans_used + 1;
+        await supabase.from('profiles').update({ scans_used: newCount }).eq('id', session.user.id);
+        setUserProfile({ ...userProfile, scans_used: newCount });
       }
-    } catch (e) {}
+    } catch {}
   };
 
   const handleSaveSettings = async (newSettings: UserSettings) => {
@@ -232,7 +194,7 @@ const App: React.FC = () => {
     if (!userProfile) return;
 
     if (userProfile.plan === 'free' && userProfile.scans_used >= userProfile.scans_limit) {
-      alert("Free trial limit reached. Please upgrade to Pro!");
+      alert('Free trial limit reached. Upgrade to Pro.');
       return;
     }
 
@@ -240,16 +202,12 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      const manualContext = manualProduct || manualCondition ? {
-        product: manualProduct,
-        condition: manualCondition
-      } : undefined;
+      const manualContext = manualProduct || manualCondition ? { product: manualProduct, condition: manualCondition } : undefined;
 
       const imagesToSend = assets
         .filter(a => a.type === 'image' && a.base64 && a.mimeType)
         .map(a => ({ base64: a.base64!, mimeType: a.mimeType! }));
 
-      // FIX: Only 2 arguments
       const result = await analyzeItemForListing(imagesToSend, manualContext);
 
       setAnalysisResult(result);
@@ -259,7 +217,7 @@ const App: React.FC = () => {
       saveToHistory(result, primaryAsset?.file);
 
     } catch (err: any) {
-      setError(err.message || "Failed to analyze item.");
+      setError(err.message || 'Failed to analyze item');
       setAppState(AppState.ERROR);
     }
   };
@@ -273,8 +231,9 @@ const App: React.FC = () => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1];
+
           resolve({
-            id: crypto.randomUUID(),
+            id: window.crypto.randomUUID(),
             type: 'image',
             url,
             base64,
@@ -283,9 +242,10 @@ const App: React.FC = () => {
           });
         };
         reader.readAsDataURL(file);
+
       } else {
         resolve({
-          id: crypto.randomUUID(),
+          id: window.crypto.randomUUID(),
           type: 'video',
           url,
           mimeType: file.type,
@@ -325,7 +285,7 @@ const App: React.FC = () => {
     setIsAuthModalOpen(true);
   };
 
-  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-gray-50">Loading Resll...</div>;
+  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-gray-50">Loading...</div>;
 
   if (!session) {
     return (
@@ -338,6 +298,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-gray-50 font-sans">
+
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -345,76 +306,44 @@ const App: React.FC = () => {
         onSave={handleSaveSettings}
       />
 
-      <nav className="border-b border-slate-700 bg-slate-900/90 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="border-b border-slate-700 bg-slate-900/90 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setViewState('SCANNER')}>
-              <div className="w-8 h-8 bg-mint-400 rounded-lg flex items-center justify-center shadow-lg shadow-mint-400/20">
-                 <svg className="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="w-8 h-8 bg-mint-400 rounded-lg flex items-center justify-center">
+                🔍
               </div>
-              <span className="font-bold text-lg text-gray-50 tracking-tight">
-                Res<span className="text-mint-400">ll</span>
-              </span>
+              <span className="font-bold text-lg">Resll</span>
             </div>
 
             <div className="flex items-center gap-4">
-
-              {viewState === 'SCANNER' && userProfile && userProfile.plan === 'free' && (
-                <div className="hidden md:flex items-center gap-2 mr-2">
-                  <span className="text-xs text-gray-400">Free Trial:</span>
-                  <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-mint-400"
-                      style={{ width: `${(userProfile.scans_used / userProfile.scans_limit) * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-xs font-bold text-gray-50">
-                    {userProfile.scans_limit - userProfile.scans_used} Left
-                  </span>
-                </div>
-              )}
-
               <button
                 onClick={() => setViewState('USER_DASH')}
-                className="px-3 py-1.5 bg-cyan-500 hover:bg-mint-400 text-gray-50 rounded-lg text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all"
+                className="px-3 py-1.5 bg-cyan-500 text-gray-50 rounded-lg text-xs font-bold"
               >
                 UPGRADE
               </button>
 
               <button
                 onClick={() => setViewState(viewState === 'USER_DASH' ? 'SCANNER' : 'USER_DASH')}
-                className={`p-1 rounded-full border border-slate-700 hover:border-cyan-500 transition-colors ${
-                  viewState === 'USER_DASH' ? 'ring-2 ring-cyan-500' : ''
-                }`}
+                className="p-1 rounded-full border border-slate-700"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-mint-400 p-0.5">
-                  <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-xs font-bold">
-                    {userProfile?.email.charAt(0).toUpperCase()}
-                  </div>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-mint-400 flex items-center justify-center text-xs font-bold">
+                  {userProfile?.email.charAt(0).toUpperCase()}
                 </div>
               </button>
 
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-2 text-gray-400 hover:text-cyan-500 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+              <button onClick={() => setIsSettingsOpen(true)} className="p-2 text-gray-400">
+                ⚙️
               </button>
 
-              <button onClick={handleLogout} className="text-xs text-red-500 hover:text-red-400 font-bold">
-                Log Out
-              </button>
+              <button onClick={handleLogout} className="text-xs text-red-500 font-bold">Log Out</button>
             </div>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 py-12">
 
         {viewState === 'ADMIN_DASH' && <AdminDashboard />}
 
@@ -424,15 +353,12 @@ const App: React.FC = () => {
             scansLeft={userProfile ? userProfile.scans_limit - userProfile.scans_used : 0}
             onLoadItem={(item) => {
               setAnalysisResult(item.result);
-
               if (item.result.thumbnail) {
                 setCurrentAssets([{ id: 'history', type: 'image', url: item.result.thumbnail }]);
               }
-
               setAppState(AppState.SUCCESS);
               setViewState('SCANNER');
             }}
-
             onNavigateHome={() => setViewState('SCANNER')}
           />
         )}
@@ -440,33 +366,29 @@ const App: React.FC = () => {
         {viewState === 'SCANNER' && (
           <>
             {appState === AppState.IDLE && (
-              <div className="max-w-3xl mx-auto animate-[fadeIn_0.5s_ease-out]">
+              <div className="max-w-3xl mx-auto">
 
                 <Hero />
 
                 <div className="mb-6 grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
 
                   <div className="md:col-span-6">
-                    <label className="block text-xs text-gray-400 mb-1 ml-1 uppercase font-bold">
-                      Product Name (Optional)
-                    </label>
+                    <label className="block text-xs text-gray-400 mb-1">Product Name</label>
                     <input
                       type="text"
                       value={manualProduct}
                       onChange={(e) => setManualProduct(e.target.value)}
-                      placeholder="e.g. Nike Air Max 90 Black Size 10"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-gray-50 focus:border-cyan-500 outline-none transition-all placeholder:text-gray-400"
+                      placeholder="Nike Air Max 90 Black Size 10"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-gray-50"
                     />
                   </div>
 
                   <div className="md:col-span-3">
-                    <label className="block text-xs text-gray-400 mb-1 ml-1 uppercase font-bold">
-                      Condition
-                    </label>
+                    <label className="block text-xs text-gray-400 mb-1">Condition</label>
                     <select
                       value={manualCondition}
                       onChange={(e) => setManualCondition(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-gray-50 focus:border-cyan-500 outline-none transition-all appearance-none cursor-pointer"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-gray-50"
                     >
                       <option value="New">New</option>
                       <option value="Like New">Like New</option>
@@ -480,58 +402,33 @@ const App: React.FC = () => {
                     <button
                       onClick={handleManualGenerate}
                       disabled={!manualProduct}
-                      className={`w-full py-3 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2
-                        ${
-                          manualProduct
-                            ? 'bg-cyan-500 hover:bg-mint-400 text-gray-50 shadow-lg shadow-cyan-500/20'
-                            : 'bg-slate-900 text-gray-400 border border-slate-700 cursor-not-allowed'
-                        }`}
+                      className={`w-full py-3 px-4 rounded-lg font-bold text-sm
+                        ${manualProduct ? 'bg-cyan-500 text-gray-50' : 'bg-slate-900 text-gray-400 border border-slate-700'}`}
                     >
                       {manualProduct ? 'Generate' : 'Enter Details'}
                     </button>
                   </div>
-
                 </div>
 
-                <div className="relative z-0">
-                  {manualProduct && (
-                    <div className="absolute -top-3 left-0 right-0 flex justify-center z-10">
-                      <span className="bg-mint-500/10 text-mint-400 text-[10px] font-bold px-3 py-1 rounded-full border border-mint-500/30 uppercase tracking-wide backdrop-blur-sm">
-                        Adding Context: "{manualProduct}"
-                      </span>
-                    </div>
-                  )}
-
-                  <UploadZone onFilesSelected={processFiles} disabled={false} />
-                </div>
+                <UploadZone onFilesSelected={processFiles} disabled={false} />
               </div>
             )}
 
             {appState === AppState.ANALYZING && (
-              <div className="max-w-2xl mx-auto mt-12 animate-[fadeIn_0.5s_ease-out]">
+              <div className="max-w-2xl mx-auto mt-12">
                 <AnalysisView />
               </div>
             )}
 
             {appState === AppState.SUCCESS && analysisResult && (
-              <ResultCard
-                result={analysisResult}
-                assets={currentAssets}
-                onReset={handleReset}
-              />
+              <ResultCard result={analysisResult} assets={currentAssets} onReset={handleReset} />
             )}
 
             {appState === AppState.ERROR && (
               <div className="max-w-xl mx-auto mt-12 text-center bg-slate-900 border border-red-900/50 p-8 rounded-2xl">
                 <h2 className="text-xl font-bold text-gray-50 mb-2">Scan Failed</h2>
-                <p className="text-gray-400 mb-6">
-                  {error}
-                </p>
-
-                <button
-                  onClick={handleReset}
-                  className="px-6 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-gray-50 rounded-lg transition-colors"
-                >
+                <p className="text-gray-400 mb-6">{error}</p>
+                <button onClick={handleReset} className="px-6 py-2 bg-slate-800 text-gray-50 rounded-lg">
                   Try Again
                 </button>
               </div>
@@ -541,12 +438,8 @@ const App: React.FC = () => {
       </main>
 
       <footer className="mt-20 border-t border-slate-700 py-8 text-center text-gray-400 text-sm">
-        <p className="mb-2">&copy; {new Date().getFullYear()} Resll Analytics Ltd. London, UK.</p>
-
-        <button
-          onClick={() => setViewState(viewState === 'ADMIN_DASH' ? 'SCANNER' : 'ADMIN_DASH')}
-          className="text-[10px] text-slate-800 hover:text-slate-600"
-        >
+        <p className="mb-2">&copy; {new Date().getFullYear()} Resll Analytics Ltd</p>
+        <button onClick={() => setViewState(viewState === 'ADMIN_DASH' ? 'SCANNER' : 'ADMIN_DASH')} className="text-[10px] text-slate-800">
           Admin View
         </button>
       </footer>
