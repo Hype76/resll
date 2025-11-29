@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 import { ListingResult, SearchSource, UserSettings } from "../types";
 
 // Using the Pro model for expert knowledge on products and pricing
